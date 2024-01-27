@@ -1,19 +1,16 @@
-name: Send to S3
+name: Update S3 File
 
 on:
- push:
-    branches: [ main ]
+ schedule:
+    - cron: '*/5 * * * *'
 
 jobs:
- deploy:
+ update:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
-
-    - name: Create hello_world.txt
-      run: echo "Hello, World! Current time is $(date)" > hello_world.txt
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
@@ -22,6 +19,11 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-west-2
 
-    - name: Copy hello_world.txt to S3
-      run: |
-        aws s3 cp hello_world.txt s3://scraper-meli
+    - name: Download hello_world.txt from S3
+      run: aws s3 cp s3://scraper-meli/hello_world.txt hello_world.txt
+
+    - name: Append to hello_world.txt
+      run: echo "Hello, World! Current time is $(date)" >> hello_world.txt
+
+    - name: Upload hello_world.txt to S3
+      run: aws s3 cp hello_world.txt s3://scraper-meli/hello_world.txt
