@@ -1,9 +1,8 @@
 name: Update S3 File
 
 on:
-  push:
-    branches:
-      - "main"
+  schedule:
+    - cron: '0  7 * * *'
 
 jobs:
  update:
