@@ -20,11 +20,5 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-west-2
 
-    - name: Download hello_world.txt from S3
-      run: aws s3 cp s3://scraper-meli/hello_world.txt hello_world.txt
-
-    - name: Append to hello_world.txt
-      run: echo "Hello, World! Current time is $(date)" >> hello_world.txt
-
-    - name: Upload hello_world.txt to S3
-      run: aws s3 cp hello_world.txt s3://scraper-meli/hello_world.txt
+    - name: Download data from api
+      run: python src/main.py
