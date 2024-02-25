@@ -11,6 +11,9 @@ from botocore.exceptions import ClientError
 
 now = datetime.now().date()
 
+import os
+import boto3
+
 def upload_to_s3(file_name, bucket_name, object_name=None):
     """Upload a file to an S3 bucket
 
@@ -22,13 +25,19 @@ def upload_to_s3(file_name, bucket_name, object_name=None):
     if object_name is None:
         object_name = file_name
 
+    # Verifica si el archivo existe
+    if not os.path.isfile(file_name):
+        print(f"El archivo {file_name} no existe.")
+        return False
+
     s3_client = boto3.client('s3')
     try:
         response = s3_client.upload_file(file_name, bucket_name, object_name)
-    except ClientError as e:
-        logging.error(e)
+        print(f"Archivo {file_name} subido exitosamente a {bucket_name}/{object_name}")
+        return True
+    except Exception as e:
+        print(f"Error al subir el archivo: {e}")
         return False
-    return True
 
 def main():
     raw_data = get_data_from_api(num_search_pages=1)
