@@ -12,7 +12,7 @@ def main():
     transformed_data['_created'] = now  
     file_name = 'data/raw/data.csv'
     transformed_data.to_csv(file_name)   
-    #upload_to_s3(file_name, bucket_name='scraper-meli', object_name=f'data_{now}.csv')
+    upload_to_s3(file_name, bucket_name='scraper-meli', object_name=f'data_{now}.csv')
 
 if __name__ == "__main__":
     main()
