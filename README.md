@@ -16,7 +16,7 @@ python src/initial_load.py
 in all Data engineering project, we need to realize first an initial load of our data. [Initial load](src/initial_load.py) has the needed code.
 
 ## 2. daily cron
-[main.py](src/main.py) is the printipal code that github actions run daily at 7:00, the source code is in [.github/workflows/send-data.yaml](.github/workflows/send-data.yml)
+[main.py](src/main.py) is the principal code that github actions run daily at 7:00, the source code is in [.github/workflows/send-data.yaml](.github/workflows/send-data.yml)
 
 ## 3. Final data
 each day, we upload to S3 an CSV file with the processed data.
