@@ -7,7 +7,7 @@ from load import upload_to_s3
 now = datetime.now().date()
 
 def main():
-    raw_data = get_data_from_api(num_search_pages=3)
+    raw_data = get_data_from_api(num_search_pages=1)
     transformed_data = transform_json_to_df(raw_data)
     transformed_data['_created'] = now  
     file_name = 'data/raw/data.csv'
