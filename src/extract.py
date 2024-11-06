@@ -4,7 +4,7 @@ import json
 def get_data_from_api(num_search_pages: int = 1):
     url = "https://wilmars-scraper.hf.space/product"
     payload = {
-    "product": "carro",
+    "product": "",
     "pages":num_search_pages
     }
 
