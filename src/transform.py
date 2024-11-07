@@ -28,7 +28,7 @@ def clean_mileage(col: pd.Series):
     return mlieage_clean
     
 def clean_locations(df):
-    df['location_city'] = df['locations'].str.split('-').str[0]
-    df['location_state'] = df['locations'].str.split('-').str[1]
+    df['location_city2'] = df['locations'].str.split('-').str[0]
+    df['location_city'] = df['locations'].str.split('-').str[1]
     df.drop(columns = 'locations', inplace=True)
     return df
