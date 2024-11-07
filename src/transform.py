@@ -28,7 +28,10 @@ def clean_mileage(col: pd.Series):
     return mlieage_clean
     
 def clean_locations(df):
-    df['location_city'] = df['locations'].str.split('-').apply(lambda x: x[0]).str.strip()
-    df['location_state'] = df['locations'].str.split('-').apply(lambda x: x[1]).str.strip()
+    print("LLEGA")
+    df['location_city'] = df['locations'].str.split('-').str[0]
+    print('LLEGA')
+    print(df['location_city'])
+    df['location_state'] = df['locations'].str.split('-').str[1]
     df.drop(columns = 'locations', inplace=True)
     return df
