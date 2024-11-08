@@ -10,8 +10,8 @@ def transform_json_to_df(json):
 
 def get_info_from_name(data):
     product_serie = data['product'].str.split(' ')
-    data['vehicle_make'] = product_serie.apply(lambda x: x[0])
-    data['vehicle_line'] = product_serie.apply(lambda x: x[1])
+    data['vehicle_make'] = product_serie.str[0].str.strip()
+    data['vehicle_line'] = product_serie.str[1].str.strip()
     data['kilometraje'] = clean_mileage(data['kilometraje'])
     return data
 
@@ -28,7 +28,7 @@ def clean_mileage(col: pd.Series):
     return mlieage_clean
     
 def clean_locations(df):
-    df['location_city2'] = df['locations'].str.split('-').str[0]
-    df['location_city'] = df['locations'].str.split('-').str[1]
+    df['location_city2'] = df['locations'].str.split('-').str[0].str.strip()
+    df['location_city'] = df['locations'].str.split('-').str[1].str.strip()
     df.drop(columns = 'locations', inplace=True)
     return df
