@@ -15,6 +15,8 @@ def get_data_from_api(num_search_pages: int = 1, product: str = 'carros', items:
         "x-api-key": os.getenv("API_KEY")
     }
 
-    response = requests.post(url, data=json.dumps(payload), headers=headers)
+    response = requests.post(url, data=json.dumps(payload), headers=headers, timeout=600)
+    print(f"Response status: {response.status_code}")
+    print(f"Response body (first 500 chars): {response.text[:500]}")
     return response.json()
 

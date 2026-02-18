@@ -16,7 +16,7 @@ def main(product):
         transformed_data = transform_json_to_df(raw_data)
         now = datetime.now().date()
         transformed_data['_created'] = now  
-        file_name = 'data/raw/data.csv'
+        file_name = '/tmp/data.csv'
         transformed_data.to_csv(file_name)   
         upload_to_s3(file_name, bucket_name=f'scraper-meli', object_name=f'{product}/data_{now}.csv')
         logging.info(f"Data processed successfully for product: {product}")
