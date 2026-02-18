@@ -1,4 +1,6 @@
 import logging
+from dotenv import load_dotenv
+load_dotenv()
 from extract import get_data_from_api
 from transform import transform_json_to_df
 from datetime import datetime

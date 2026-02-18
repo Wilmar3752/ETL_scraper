@@ -1,13 +1,20 @@
 import requests
 import json
+import os
 
-def get_data_from_api(num_search_pages: int = 1, product: str = 'Carros'):
-    url = "https://wilmars-scraper.hf.space/product"
+def get_data_from_api(num_search_pages: int = 1, product: str = 'carros', items: int = 50):
+    url = f"{os.getenv('SCRAPER_API_URL')}/product"
+    print("Making request to: ", url)
     payload = {
     "product": product,
-    "pages":num_search_pages
+    "pages":num_search_pages,
+    "items":items
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "x-api-key": os.getenv("API_KEY")
     }
 
-    response = requests.post(url, data=json.dumps(payload))
+    response = requests.post(url, data=json.dumps(payload), headers=headers)
     return response.json()
 

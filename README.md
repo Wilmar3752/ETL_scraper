@@ -2,14 +2,21 @@
 this project use GithubActions to Extract Transform and Load data from web scraping to S3 ready to be used for Analytic projects
 
 ## 0. Setup
-Please create your virtual environment before, for example
+Create your virtual environment with [uv](https://docs.astral.sh/uv/) and install dependencies:
 ```bash
-python3 -m venv myenv
-source myenv/bin/activate
-```
-Then run
-```bash
-pip install -r requirements.txt
+uv venv
+# Add automatic PYTHONPATH to activate script
+cat >> .venv/bin/activate << 'EOF'
+
+# set PYTHONPATH to project root
+if ! [ -z "${PYTHONPATH+_}" ] ; then
+    _OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
+fi
+PYTHONPATH="$(dirname "$VIRTUAL_ENV")"
+export PYTHONPATH
+EOF
+source .venv/bin/activate
+uv pip install -r requirements.txt
 python src/initial_load.py
 ```
 ## 1. Initial load
