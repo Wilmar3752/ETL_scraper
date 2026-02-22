@@ -82,6 +82,12 @@ resource "aws_lambda_function" "this" {
   }
 }
 
+# CloudWatch Log Group
+resource "aws_cloudwatch_log_group" "lambda" {
+  name              = "/aws/lambda/${var.project_name}"
+  retention_in_days = 7
+}
+
 # EventBridge Schedule Rule
 resource "aws_cloudwatch_event_rule" "daily" {
   name                = "${var.project_name}-daily"
