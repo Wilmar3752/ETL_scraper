@@ -7,6 +7,48 @@ terraform {
   }
 }
 
+locals {
+  parquet_serde         = "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
+  parquet_input_format  = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat"
+  parquet_output_format = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat"
+
+  athena_columns = [
+    { name = "product",          type = "string" },
+    { name = "price",            type = "bigint" },
+    { name = "link",             type = "string" },
+    { name = "years",            type = "bigint" },
+    { name = "_created",         type = "string" },
+    { name = "description",      type = "string" },
+    { name = "color",            type = "string" },
+    { name = "body_type",        type = "string" },
+    { name = "fuel_type",        type = "string" },
+    { name = "num_doors",        type = "double" },
+    { name = "engine",           type = "double" },
+    { name = "transmission",     type = "string" },
+    { name = "image_url",        type = "string" },
+    { name = "sku",              type = "string" },
+    { name = "item_condition",   type = "string" },
+    { name = "year",             type = "double" },
+    { name = "version",          type = "string" },
+    { name = "horsepower",       type = "string" },
+    { name = "seating_capacity", type = "double" },
+    { name = "traction_control", type = "string" },
+    { name = "steering",         type = "string" },
+    { name = "last_plate_digit", type = "double" },
+    { name = "plate_parity",     type = "string" },
+    { name = "single_owner",     type = "string" },
+    { name = "negotiable_price", type = "string" },
+    { name = "vehicle_brand",    type = "string" },
+    { name = "vehicle_line",     type = "string" },
+    { name = "id",               type = "bigint" },
+    { name = "mileage",          type = "bigint" },
+    { name = "location_city2",   type = "string" },
+    { name = "location_city",    type = "string" },
+    { name = "json_ld_extra",    type = "string" },
+    { name = "specs_extra",      type = "string" },
+  ]
+}
+
 provider "aws" {
   region = var.aws_region
 }
@@ -99,6 +141,95 @@ resource "aws_cloudwatch_event_target" "lambda" {
   rule = aws_cloudwatch_event_rule.daily.name
   arn  = aws_lambda_function.this.arn
 }
+
+# ─── Athena ───────────────────────────────────────────────────────────────────
+
+resource "aws_athena_workgroup" "this" {
+  name = var.project_name
+
+  configuration {
+    result_configuration {
+      output_location = "s3://scraper-meli/athena-results/"
+    }
+  }
+}
+
+resource "aws_glue_catalog_database" "this" {
+  name = "scraper_meli"
+}
+
+resource "aws_glue_catalog_table" "carros_daily" {
+  name          = "carros_daily"
+  database_name = aws_glue_catalog_database.this.name
+
+  table_type = "EXTERNAL_TABLE"
+
+  parameters = {
+    "classification" = "parquet"
+  }
+
+  storage_descriptor {
+    location      = "s3://scraper-meli/carros/"
+    input_format  = local.parquet_input_format
+    output_format = local.parquet_output_format
+
+    ser_de_info {
+      serialization_library = local.parquet_serde
+    }
+
+    dynamic "columns" {
+      for_each = local.athena_columns
+      content {
+        name = columns.value.name
+        type = columns.value.type
+      }
+    }
+  }
+}
+
+resource "aws_glue_catalog_table" "carros_initial" {
+  name          = "carros_initial"
+  database_name = aws_glue_catalog_database.this.name
+
+  table_type = "EXTERNAL_TABLE"
+
+  parameters = {
+    "classification" = "parquet"
+  }
+
+  storage_descriptor {
+    location      = "s3://scraper-meli/initial_load/"
+    input_format  = local.parquet_input_format
+    output_format = local.parquet_output_format
+
+    ser_de_info {
+      serialization_library = local.parquet_serde
+    }
+
+    dynamic "columns" {
+      for_each = local.athena_columns
+      content {
+        name = columns.value.name
+        type = columns.value.type
+      }
+    }
+  }
+}
+
+# Named query con el SQL de la vista carros (carros_daily + carros_initial)
+resource "aws_athena_named_query" "create_carros_view" {
+  name      = "create_carros_view"
+  workgroup = aws_athena_workgroup.this.name
+  database  = aws_glue_catalog_database.this.name
+  query     = <<-SQL
+    CREATE OR REPLACE VIEW carros AS
+    SELECT *, 'daily'   AS source FROM carros_daily
+    UNION ALL
+    SELECT *, 'initial' AS source FROM carros_initial
+  SQL
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
 
 resource "aws_lambda_permission" "eventbridge" {
   statement_id  = "AllowEventBridgeInvoke"

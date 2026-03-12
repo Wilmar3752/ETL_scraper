@@ -16,9 +16,9 @@ def main(product):
         transformed_data = transform_json_to_df(raw_data)
         now = datetime.now().date()
         transformed_data['_created'] = now  
-        file_name = '/tmp/data.csv'
-        transformed_data.to_csv(file_name)   
-        upload_to_s3(file_name, bucket_name=f'scraper-meli', object_name=f'{product}/data_{now}.csv')
+        file_name = '/tmp/data.parquet'
+        transformed_data.to_parquet(file_name, index=False)
+        upload_to_s3(file_name, bucket_name=f'scraper-meli', object_name=f'{product}/data_{now}.parquet')
         logging.info(f"Data processed successfully for product: {product}")
     except Exception as e:
         logging.error(f"An error occurred while processing data for product: {product}. Error: {str(e)}")
