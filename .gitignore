@@ -166,3 +166,4 @@ CLAUDE.local.md
 infra/.terraform/
 infra/*.tfstate
 infra/*.tfstate.backup
+infra/terraform.tfvars

@@ -1,3 +1,4 @@
+import json
 import pandas as pd
 import re
 
@@ -40,6 +41,16 @@ def transform_json_to_df(json_data):
     )
     data['id'] = data['link'].apply(extract_pub_number_from_link)
     data['mileage'] = clean_mileage(data.pop('kilometraje'))
+
+    # Enforce consistent numeric types
+    data['price'] = pd.to_numeric(data['price'], errors='coerce').astype('Int64')
+    data['years'] = pd.to_numeric(data['years'], errors='coerce').astype('Int64')
+    data['year'] = pd.to_numeric(data['year'], errors='coerce').astype('Int64')
+    data['num_doors'] = pd.to_numeric(data['num_doors'], errors='coerce').astype('Int64')
+    data['seating_capacity'] = pd.to_numeric(data['seating_capacity'], errors='coerce').astype('Int64')
+    data['last_plate_digit'] = pd.to_numeric(data['last_plate_digit'], errors='coerce').astype('Int64')
+    data['id'] = pd.to_numeric(data['id'], errors='coerce').astype('Int64')
+    data['engine'] = data['engine'].astype(str).where(data['engine'].notna(), None)
     data = clean_locations(data)
 
     # Store remaining non-extracted keys from dicts
@@ -54,10 +65,10 @@ def transform_json_to_df(json_data):
         'Único dueño', 'Con precio negociable',
     }
     data['json_ld_extra'] = json_ld.apply(
-        lambda x: {k: v for k, v in x.items() if k not in _json_ld_extracted} or None
+        lambda x: json.dumps({k: v for k, v in x.items() if k not in _json_ld_extracted}) or None
     )
     data['specs_extra'] = specs.apply(
-        lambda x: {k: v for k, v in x.items() if k not in _specs_extracted} or None
+        lambda x: json.dumps({k: v for k, v in x.items() if k not in _specs_extracted}) or None
     )
 
     # Drop raw nested columns
