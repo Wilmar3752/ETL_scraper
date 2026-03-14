@@ -1,0 +1,2 @@
+scraper_api_url = "https://<meli-scrapper-url>.lambda-url.us-east-1.on.aws"
+api_key         = "your-api-key"

@@ -37,6 +37,7 @@ Main view: `carros` (union of `carros_daily` + `carros_initial`)
 
 ```bash
 # Setup
+cp .env.example .env  # fill in your values
 uv venv
 cat >> .venv/bin/activate << 'EOF'
 
@@ -61,9 +62,8 @@ python src/initial_load.py
 
 Managed with Terraform in `infra/`. Requires `infra/terraform.tfvars` (not committed):
 
-```hcl
-scraper_api_url = "https://<meli-scrapper-url>.lambda-url.us-east-1.on.aws"
-api_key         = "<api-key>"
+```bash
+cp infra/terraform.tfvars.example infra/terraform.tfvars  # fill in your values
 ```
 
 ```bash
