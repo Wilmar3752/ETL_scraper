@@ -1,14 +1,45 @@
-# ETL for car web scraping project
-this project use GithubActions to Extract Transform and Load data from web scraping to S3 ready to be used for Analytic projects
+# ETL Scraper — MercadoLibre Vehicles
 
-## 0. Setup
-Create your virtual environment with [uv](https://docs.astral.sh/uv/) and install dependencies:
+ETL pipeline that scrapes vehicle listings (cars/motos) from MercadoLibre Colombia, transforms the data into Parquet files, and uploads them to S3 for analytics via AWS Athena.
+
+## Architecture
+
+```
+EventBridge (daily 3 AM UTC)
+  └── Lambda: etl-scraper
+        ├── extract.py   →  POST to meli-scrapper Lambda → returns JSON
+        ├── transform.py →  JSON → pandas DataFrame (cleans types, locations, extracts IDs)
+        └── load.py      →  DataFrame → Parquet → S3 (scraper-meli bucket)
+```
+
+### AWS Resources
+- **meli-scrapper** — Lambda that scrapes MercadoLibre and returns raw JSON
+- **etl-scraper** — Lambda that runs the ETL daily, deployed via ECR image
+- **scraper-meli** — S3 bucket with Parquet files
+- **scraper_meli** — Glue database + Athena workgroup for querying
+
+## S3 Layout
+
+```
+scraper-meli/
+  carros/data_YYYY-MM-DD.parquet    # daily loads
+  initial_load/data_2026-02-18.parquet
+  athena-results/                   # Athena query results
+```
+
+## Athena
+
+Database: `scraper_meli`
+Workgroup: `etl-scraper`
+Main view: `carros` (union of `carros_daily` + `carros_initial`)
+
+## Local Development
+
 ```bash
+# Setup
 uv venv
-# Add automatic PYTHONPATH to activate script
 cat >> .venv/bin/activate << 'EOF'
 
-# set PYTHONPATH to project root
 if ! [ -z "${PYTHONPATH+_}" ] ; then
     _OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
 fi
@@ -17,14 +48,32 @@ export PYTHONPATH
 EOF
 source .venv/bin/activate
 uv pip install -r requirements.txt
+
+# Run ETL locally
+python src/main.py Carros
+python src/main.py Motos
+
+# Run initial historical load
 python src/initial_load.py
 ```
-## 1. Initial load
-in all Data engineering project, we need to realize first an initial load of our data. [Initial load](src/initial_load.py) has the needed code.
 
-## 2. daily cron
-[main.py](src/main.py) is the principal code that github actions run daily at 7:00, the source code is in [.github/workflows/send-data.yaml](.github/workflows/send-data.yml)
+## Infrastructure
 
-## 3. Final data
-each day, we upload to S3 an CSV file with the processed data.
+Managed with Terraform in `infra/`. Requires `infra/terraform.tfvars` (not committed):
 
+```hcl
+scraper_api_url = "https://<meli-scrapper-url>.lambda-url.us-east-1.on.aws"
+api_key         = "<api-key>"
+```
+
+```bash
+cd infra
+terraform init
+terraform apply
+```
+
+## CI/CD
+
+`.github/workflows/deploy-lambda.yml` — triggers on push to `master`, builds a Docker image, pushes to ECR, and updates the Lambda function code.
+
+Requires GitHub secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
