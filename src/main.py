@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 def main(product):
     try:
-        raw_data = get_data_from_api(num_search_pages=1, product=product)
+        raw_data = get_data_from_api(num_search_pages=3, product=product)
         transformed_data = transform_json_to_df(raw_data)
         now = datetime.now().date()
         transformed_data['_created'] = now  
