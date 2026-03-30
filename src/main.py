@@ -1,4 +1,6 @@
 import logging
+from dotenv import load_dotenv
+load_dotenv()
 from extract import get_data_from_api
 from transform import transform_json_to_df
 from datetime import datetime
@@ -10,13 +12,13 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 def main(product):
     try:
-        raw_data = get_data_from_api(num_search_pages=1, product=product)
+        raw_data = get_data_from_api(num_search_pages=3, product=product)
         transformed_data = transform_json_to_df(raw_data)
         now = datetime.now().date()
         transformed_data['_created'] = now  
-        file_name = 'data/raw/data.csv'
-        transformed_data.to_csv(file_name)   
-        upload_to_s3(file_name, bucket_name=f'scraper-meli', object_name=f'{product}/data_{now}.csv')
+        file_name = '/tmp/data.parquet'
+        transformed_data.to_parquet(file_name, index=False)
+        upload_to_s3(file_name, bucket_name=f'scraper-meli', object_name=f'{product}/data_{now}.parquet')
         logging.info(f"Data processed successfully for product: {product}")
     except Exception as e:
         logging.error(f"An error occurred while processing data for product: {product}. Error: {str(e)}")
