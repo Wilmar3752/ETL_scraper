@@ -46,6 +46,7 @@ locals {
     { name = "location_city",    type = "string" },
     { name = "json_ld_extra",    type = "string" },
     { name = "specs_extra",      type = "string" },
+    { name = "source",           type = "string" },
   ]
 }
 
@@ -223,9 +224,9 @@ resource "aws_athena_named_query" "create_carros_view" {
   database  = aws_glue_catalog_database.this.name
   query     = <<-SQL
     CREATE OR REPLACE VIEW carros AS
-    SELECT *, 'daily'   AS source FROM carros_daily
+    SELECT * FROM carros_daily
     UNION ALL
-    SELECT *, 'initial' AS source FROM carros_initial
+    SELECT * FROM carros_initial
   SQL
 }
 

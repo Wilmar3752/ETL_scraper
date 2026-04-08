@@ -77,6 +77,88 @@ def transform_json_to_df(json_data):
     return data
 
 
+def transform_carroya_to_df(json_data):
+    data = pd.DataFrame(json_data)
+    data = data[data['product'].notna()]
+
+    json_ld = data['json_ld'].apply(lambda x: x if isinstance(x, dict) else {})
+    specs = data['specs'].apply(lambda x: x if isinstance(x, dict) else {})
+
+    # Fields from json_ld
+    data['vehicle_brand'] = json_ld.apply(
+        lambda x: x['brand']['name'] if isinstance(x.get('brand'), dict) else x.get('brand')
+    )
+    data['sku'] = json_ld.apply(lambda x: x.get('sku'))
+    data['image_url'] = json_ld.apply(lambda x: x.get('image'))
+
+    # vehicle_line: product name minus the brand prefix
+    data['vehicle_line'] = data.apply(
+        lambda row: row['product'].replace(row['vehicle_brand'], '', 1).strip()
+        if pd.notna(row['vehicle_brand']) else row['product'],
+        axis=1
+    )
+
+    # Fields from specs
+    data['item_condition'] = specs.apply(lambda x: x.get('ESTADO'))
+    data['transmission'] = specs.apply(lambda x: x.get('TIPO DE CAJA'))
+    data['fuel_type'] = specs.apply(lambda x: x.get('COMBUSTIBLE'))
+    data['engine'] = specs.apply(lambda x: x.get('CILINDRAJE'))
+    data['color'] = specs.apply(lambda x: x.get('COLOR'))
+
+    # id from vehicle_id
+    data['id'] = pd.to_numeric(data['vehicle_id'], errors='coerce').astype('Int64')
+
+    # year → year and years
+    data['year'] = pd.to_numeric(data['year'], errors='coerce').astype('Int64')
+    data['years'] = data['year'].copy()
+
+    # price: "$129.990.000" → 129990000
+    data['price'] = (
+        data['price'].str.replace(r'[\$\.\s]', '', regex=True)
+    )
+    data['price'] = pd.to_numeric(data['price'], errors='coerce').astype('Int64')
+
+    # mileage: "30.576 Km" → 30576
+    data['mileage'] = (
+        data['kilometraje'].str.replace('.', '', regex=False).str.split(' ').str[0]
+    )
+    data['mileage'] = pd.to_numeric(data['mileage'], errors='coerce').fillna(0).astype(int)
+
+    # plate: "Placa **5" → last_plate_digit and plate_parity
+    data['last_plate_digit'] = data['plate'].str.extract(r'(\d)$')
+    data['last_plate_digit'] = pd.to_numeric(data['last_plate_digit'], errors='coerce').astype('Int64')
+    data['plate_parity'] = data['last_plate_digit'].apply(
+        lambda x: 'Impar' if pd.notna(x) and x % 2 != 0 else ('Par' if pd.notna(x) else None)
+    )
+
+    # location
+    data['location_city2'] = data['location']
+    data['location_city'] = None
+
+    # Fields not available in Carroya
+    for col in ['body_type', 'version', 'horsepower', 'traction_control',
+                'steering', 'single_owner', 'negotiable_price', 'description']:
+        data[col] = None
+    data['num_doors'] = pd.array([pd.NA] * len(data), dtype='Int64')
+    data['seating_capacity'] = pd.array([pd.NA] * len(data), dtype='Int64')
+
+    # Extra fields
+    _json_ld_extracted = {'brand', 'sku', 'image'}
+    _specs_extracted = {'ESTADO', 'TIPO DE CAJA', 'COMBUSTIBLE', 'CILINDRAJE', 'COLOR'}
+    data['json_ld_extra'] = json_ld.apply(
+        lambda x: json.dumps({k: v for k, v in x.items() if k not in _json_ld_extracted})
+    )
+    data['specs_extra'] = specs.apply(
+        lambda x: json.dumps({k: v for k, v in x.items() if k not in _specs_extracted})
+    )
+
+    data.drop(columns=['json_ld', 'specs', 'vehicle_id', 'kilometraje',
+                        'location', 'plate', 'seller_name', 'seller_address'],
+              errors='ignore', inplace=True)
+
+    return data
+
+
 def extract_pub_number_from_link(url):
     match = re.search(r'MCO-(\d+)', url)
     if match:

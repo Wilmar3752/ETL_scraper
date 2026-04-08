@@ -167,3 +167,7 @@ infra/.terraform/
 infra/*.tfstate
 infra/*.tfstate.backup
 infra/terraform.tfvars
+
+# Local data files
+data/raw/*.parquet
+data/raw/*.csv
