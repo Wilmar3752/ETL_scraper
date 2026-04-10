@@ -49,7 +49,7 @@ def _paginated_load(s3, get_fn, transform_fn, source_prefix, now, start_page=1):
         page += 1
 
 
-def main(source="all", start_page=1):
+def main(source="all", carroya_start_page=1, usados_renting_start_page=1):
     now = datetime.now().date()
 
     if source in ("meli", "all"):
@@ -59,16 +59,17 @@ def main(source="all", start_page=1):
 
     if source in ("carroya", "all"):
         s3 = boto3.client('s3')
-        _paginated_load(s3, get_carroya_data, transform_carroya_to_df, "carroya", now, start_page=start_page)
+        _paginated_load(s3, get_carroya_data, transform_carroya_to_df, "carroya", now, start_page=carroya_start_page)
 
     if source in ("usados_renting", "all"):
         s3 = boto3.client('s3')
-        _paginated_load(s3, get_usados_renting_data, transform_usados_renting_to_df, "usados_renting", now, start_page=start_page)
+        _paginated_load(s3, get_usados_renting_data, transform_usados_renting_to_df, "usados_renting", now, start_page=usados_renting_start_page)
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", choices=["meli", "carroya", "usados_renting", "all"], default="all")
-    parser.add_argument("--start-page", type=int, default=1)
+    parser.add_argument("--carroya-start-page", type=int, default=1)
+    parser.add_argument("--usados-renting-start-page", type=int, default=1)
     args = parser.parse_args()
-    main(args.source, start_page=args.start_page)
+    main(args.source, carroya_start_page=args.carroya_start_page, usados_renting_start_page=args.usados_renting_start_page)
