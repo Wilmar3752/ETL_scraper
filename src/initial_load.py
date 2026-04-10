@@ -3,8 +3,8 @@ import io
 import boto3
 from dotenv import load_dotenv
 load_dotenv(override=True)
-from extract import get_data_from_api, get_carroya_data
-from transform import transform_json_to_df, transform_carroya_to_df
+from extract import get_data_from_api, get_carroya_data, get_usados_renting_data
+from transform import transform_json_to_df, transform_carroya_to_df, transform_usados_renting_to_df
 from load import upload_to_s3
 from datetime import datetime
 import pandas as pd
@@ -21,7 +21,35 @@ def load_source(raw_data, transform_fn, slug, now):
                  object_name=f'initial_load/data_{now}_{slug}.parquet')
     logging.info(f"Initial load completed for {slug}: {len(transformed)} records")
 
-def main(source="all"):
+def _paginated_load(s3, get_fn, transform_fn, source_prefix, now, start_page=1):
+    """Generic page-by-page load with S3 verification. Stops when API returns empty."""
+    page = start_page
+    while True:
+        logging.info(f"Extracting {source_prefix} page {page}...")
+        raw = get_fn(num_search_pages=1, start_page=page)
+        if not raw:
+            logging.info(f"No more {source_prefix} pages.")
+            break
+
+        slug = f"{source_prefix}_p{page}"
+        s3_key = f"initial_load/data_{now}_{slug}.parquet"
+        load_source(raw, transform_fn, slug, now)
+
+        try:
+            obj = s3.get_object(Bucket='scraper-meli', Key=s3_key)
+            records = len(pd.read_parquet(io.BytesIO(obj['Body'].read())))
+            if records == 0:
+                logging.error(f"Page {page}: S3 file has 0 records. Stopping.")
+                break
+            logging.info(f"Page {page} verified in S3: {records} records OK.")
+        except Exception as e:
+            logging.error(f"Page {page}: S3 verification failed: {e}. Stopping.")
+            break
+
+        page += 1
+
+
+def main(source="all", start_page=1):
     now = datetime.now().date()
 
     if source in ("meli", "all"):
@@ -31,34 +59,16 @@ def main(source="all"):
 
     if source in ("carroya", "all"):
         s3 = boto3.client('s3')
-        page = 1
-        while True:
-            logging.info(f"Extracting Carroya page {page}...")
-            raw = get_carroya_data(num_search_pages=1, start_page=page)
-            if not raw:
-                logging.info("No more Carroya pages.")
-                break
+        _paginated_load(s3, get_carroya_data, transform_carroya_to_df, "carroya", now, start_page=start_page)
 
-            slug = f"carroya_p{page}"
-            s3_key = f"initial_load/data_{now}_{slug}.parquet"
-            load_source(raw, transform_carroya_to_df, slug, now)
-
-            try:
-                obj = s3.get_object(Bucket='scraper-meli', Key=s3_key)
-                records = len(pd.read_parquet(io.BytesIO(obj['Body'].read())))
-                if records == 0:
-                    logging.error(f"Page {page}: S3 file has 0 records. Stopping.")
-                    break
-                logging.info(f"Page {page} verified in S3: {records} records OK.")
-            except Exception as e:
-                logging.error(f"Page {page}: S3 verification failed: {e}. Stopping.")
-                break
-
-            page += 1
+    if source in ("usados_renting", "all"):
+        s3 = boto3.client('s3')
+        _paginated_load(s3, get_usados_renting_data, transform_usados_renting_to_df, "usados_renting", now, start_page=start_page)
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--source", choices=["meli", "carroya", "all"], default="all")
+    parser.add_argument("--source", choices=["meli", "carroya", "usados_renting", "all"], default="all")
+    parser.add_argument("--start-page", type=int, default=1)
     args = parser.parse_args()
-    main(args.source)
+    main(args.source, start_page=args.start_page)

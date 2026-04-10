@@ -159,6 +159,82 @@ def transform_carroya_to_df(json_data):
     return data
 
 
+def transform_usados_renting_to_df(json_data):
+    data = pd.DataFrame(json_data)
+    data = data[data['product'].notna()]
+
+    specs = data['specs'].apply(lambda x: x if isinstance(x, dict) else {})
+
+    # Fields from specs
+    data['vehicle_brand'] = specs.apply(lambda x: x.get('Marca'))
+    data['vehicle_line'] = data.apply(
+        lambda row: row['product'].replace(row['vehicle_brand'], '', 1).strip()
+        if pd.notna(row['vehicle_brand']) else row['product'],
+        axis=1
+    )
+    data['color'] = specs.apply(lambda x: x.get('Color'))
+    data['body_type'] = specs.apply(lambda x: x.get('Tipo de vehículo'))
+    data['fuel_type'] = specs.apply(lambda x: x.get('Combustible'))
+    data['engine'] = specs.apply(lambda x: x.get('Motor'))
+    data['transmission'] = specs.apply(lambda x: x.get('Transmisión'))
+    data['version'] = specs.apply(lambda x: x.get('Modelo'))
+
+    # id: extract numeric suffix from vehicle_id slug (e.g. "honda-jazz-2007-23423" → 23423)
+    data['id'] = data['vehicle_id'].str.extract(r'(\d+)$')
+    data['id'] = pd.to_numeric(data['id'], errors='coerce').astype('Int64')
+
+    # year
+    data['year'] = pd.to_numeric(data['year'], errors='coerce').astype('Int64')
+    data['years'] = data['year'].copy()
+
+    # price: already cleaned int by scraper
+    data['price'] = pd.to_numeric(data['price'], errors='coerce').astype('Int64')
+
+    # mileage: already cleaned int by scraper
+    data['mileage'] = pd.to_numeric(data['kilometraje'], errors='coerce').fillna(0).astype(int)
+
+    # plate: try listing-level plate first, then specs
+    plate_col = data['plate'].combine_first(specs.apply(lambda x: x.get('Placa')))
+    data['last_plate_digit'] = plate_col.str.extract(r'(\d)$')
+    data['last_plate_digit'] = pd.to_numeric(data['last_plate_digit'], errors='coerce').astype('Int64')
+    data['plate_parity'] = data['last_plate_digit'].apply(
+        lambda x: 'Impar' if pd.notna(x) and x % 2 != 0 else ('Par' if pd.notna(x) else None)
+    )
+
+    # location
+    data['location_city2'] = data['location'].combine_first(specs.apply(lambda x: x.get('Ubicación')))
+    data['location_city'] = specs.apply(lambda x: x.get('Ciudad matrícula'))
+
+    # description already at top level from detail scrape
+    if 'description' not in data.columns:
+        data['description'] = None
+
+    # sku: vehicle_id is the unique listing identifier (e.g. "VCM005" — plate number)
+    data['sku'] = data['vehicle_id']
+
+    # Fields not available in usados-renting
+    for col in ['image_url', 'item_condition', 'horsepower',
+                'traction_control', 'steering', 'single_owner', 'negotiable_price']:
+        data[col] = None
+    data['num_doors'] = pd.array([pd.NA] * len(data), dtype='Int64')
+    data['seating_capacity'] = pd.array([pd.NA] * len(data), dtype='Int64')
+
+    # Extra specs
+    _specs_extracted = {
+        'Marca', 'Color', 'Tipo de vehículo', 'Combustible', 'Motor',
+        'Transmisión', 'Modelo', 'Placa', 'Descripción', 'Ubicación', 'Ciudad matrícula',
+    }
+    data['json_ld_extra'] = None
+    data['specs_extra'] = specs.apply(
+        lambda x: json.dumps({k: v for k, v in x.items() if k not in _specs_extracted})
+    )
+
+    data.drop(columns=['vehicle_id', 'kilometraje', 'location', 'plate', 'specs', '_created'],
+              errors='ignore', inplace=True)
+
+    return data
+
+
 def extract_pub_number_from_link(url):
     match = re.search(r'MCO-(\d+)', url)
     if match:
