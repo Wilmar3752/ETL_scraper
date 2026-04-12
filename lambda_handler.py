@@ -11,41 +11,44 @@ logger = logging.getLogger(__name__)
 
 
 def handler(event, context):
-    products = ["carros"]
+    source = event.get("source", "all")
     results = {}
 
-    for product in products:
+    if source in ("meli", "all"):
         try:
-            main(product)
-            results[product] = "success"
-            logger.info(f"ETL completed for {product}")
+            main("carros")
+            results["meli"] = "success"
+            logger.info("ETL completed for meli")
         except Exception as e:
-            results[product] = f"error: {str(e)}"
-            logger.error(f"ETL failed for {product}: {str(e)}")
+            results["meli"] = f"error: {str(e)}"
+            logger.error(f"ETL failed for meli: {str(e)}")
 
-    try:
-        main_carroya()
-        results["carroya"] = "success"
-        logger.info("ETL completed for carroya")
-    except Exception as e:
-        results["carroya"] = f"error: {str(e)}"
-        logger.error(f"ETL failed for carroya: {str(e)}")
+    if source in ("carroya", "all"):
+        try:
+            main_carroya()
+            results["carroya"] = "success"
+            logger.info("ETL completed for carroya")
+        except Exception as e:
+            results["carroya"] = f"error: {str(e)}"
+            logger.error(f"ETL failed for carroya: {str(e)}")
 
-    try:
-        main_usados_renting()
-        results["usados_renting"] = "success"
-        logger.info("ETL completed for usados_renting")
-    except Exception as e:
-        results["usados_renting"] = f"error: {str(e)}"
-        logger.error(f"ETL failed for usados_renting: {str(e)}")
+    if source in ("usados_renting", "all"):
+        try:
+            main_usados_renting()
+            results["usados_renting"] = "success"
+            logger.info("ETL completed for usados_renting")
+        except Exception as e:
+            results["usados_renting"] = f"error: {str(e)}"
+            logger.error(f"ETL failed for usados_renting: {str(e)}")
 
-    try:
-        main_vendetunave()
-        results["vendetunave"] = "success"
-        logger.info("ETL completed for vendetunave")
-    except Exception as e:
-        results["vendetunave"] = f"error: {str(e)}"
-        logger.error(f"ETL failed for vendetunave: {str(e)}")
+    if source in ("vendetunave", "all"):
+        try:
+            main_vendetunave()
+            results["vendetunave"] = "success"
+            logger.info("ETL completed for vendetunave")
+        except Exception as e:
+            results["vendetunave"] = f"error: {str(e)}"
+            logger.error(f"ETL failed for vendetunave: {str(e)}")
 
     has_errors = any(v.startswith("error") for v in results.values())
 
