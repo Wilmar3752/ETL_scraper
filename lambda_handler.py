@@ -4,7 +4,7 @@ import logging
 
 sys.path.insert(0, os.path.join(os.environ.get("LAMBDA_TASK_ROOT", ""), "src"))
 
-from main import main, main_carroya, main_usados_renting
+from main import main, main_carroya, main_usados_renting, main_vendetunave
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -38,6 +38,14 @@ def handler(event, context):
     except Exception as e:
         results["usados_renting"] = f"error: {str(e)}"
         logger.error(f"ETL failed for usados_renting: {str(e)}")
+
+    try:
+        main_vendetunave()
+        results["vendetunave"] = "success"
+        logger.info("ETL completed for vendetunave")
+    except Exception as e:
+        results["vendetunave"] = f"error: {str(e)}"
+        logger.error(f"ETL failed for vendetunave: {str(e)}")
 
     has_errors = any(v.startswith("error") for v in results.values())
 

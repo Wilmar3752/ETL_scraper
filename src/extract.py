@@ -26,3 +26,7 @@ def get_carroya_data(num_search_pages: int = 1, items: int = 50, start_page: int
 def get_usados_renting_data(num_search_pages: int = 1, items: int = 50, start_page: int = 1):
     return _post("/usados-renting/vehiculos", {"pages": num_search_pages, "items": items, "start_page": start_page})
 
+
+def get_vendetunave_data(num_search_pages: int = 1, items: str = "all", start_page: int = 1):
+    return _post("/vendetunave/vehiculos", {"pages": num_search_pages, "items": items, "start_page": start_page})
+

@@ -1,8 +1,8 @@
 import logging
 from dotenv import load_dotenv
 load_dotenv(override=True)
-from extract import get_data_from_api, get_carroya_data, get_usados_renting_data
-from transform import transform_json_to_df, transform_carroya_to_df, transform_usados_renting_to_df
+from extract import get_data_from_api, get_carroya_data, get_usados_renting_data, get_vendetunave_data
+from transform import transform_json_to_df, transform_carroya_to_df, transform_usados_renting_to_df, transform_vendetunave_to_df
 from datetime import datetime
 from load import upload_to_s3
 import argparse
@@ -52,6 +52,21 @@ def main_usados_renting():
         logging.info("Data processed successfully for usados_renting")
     except Exception as e:
         logging.error(f"An error occurred while processing usados_renting data. Error: {str(e)}")
+
+
+def main_vendetunave():
+    try:
+        raw_data = get_vendetunave_data(num_search_pages=5)
+        transformed_data = transform_vendetunave_to_df(raw_data)
+        now = datetime.now().date()
+        transformed_data['_created'] = now
+        transformed_data['source'] = 'vendetunave'
+        file_name = '/tmp/data_vendetunave.parquet'
+        transformed_data.to_parquet(file_name, index=False)
+        upload_to_s3(file_name, bucket_name='scraper-meli', object_name=f'carros/data_{now}_vendetunave.parquet')
+        logging.info("Data processed successfully for vendetunave")
+    except Exception as e:
+        logging.error(f"An error occurred while processing vendetunave data. Error: {str(e)}")
 
 
 if __name__ == "__main__":
