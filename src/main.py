@@ -56,7 +56,7 @@ def main_usados_renting():
 
 def main_vendetunave():
     try:
-        raw_data = get_vendetunave_data(num_search_pages=5)
+        raw_data = get_vendetunave_data(num_search_pages="all")
         transformed_data = transform_vendetunave_to_df(raw_data)
         now = datetime.now().date()
         transformed_data['_created'] = now
