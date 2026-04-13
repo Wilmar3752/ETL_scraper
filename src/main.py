@@ -27,7 +27,7 @@ def main(product):
 
 def main_carroya():
     try:
-        raw_data = get_carroya_data(num_search_pages=5)
+        raw_data = get_carroya_data(num_search_pages=10)
         transformed_data = transform_carroya_to_df(raw_data)
         now = datetime.now().date()
         transformed_data['_created'] = now
