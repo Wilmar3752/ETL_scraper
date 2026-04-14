@@ -213,7 +213,8 @@ def transform_usados_renting_to_df(json_data):
     data['sku'] = data['vehicle_id']
 
     # Fields not available in usados-renting
-    for col in ['image_url', 'item_condition', 'horsepower',
+    data['image_url'] = data['image'] if 'image' in data.columns else None
+    for col in ['item_condition', 'horsepower',
                 'traction_control', 'steering', 'single_owner', 'negotiable_price']:
         data[col] = None
     data['num_doors'] = pd.array([pd.NA] * len(data), dtype='Int64')
@@ -279,7 +280,8 @@ def transform_vendetunave_to_df(json_data):
     data['location_city'] = None
 
     # Fields not available
-    for col in ['color', 'version', 'image_url', 'horsepower',
+    data['image_url'] = data['image'] if 'image' in data.columns else None
+    for col in ['color', 'version', 'horsepower',
                 'traction_control', 'steering', 'single_owner', 'negotiable_price']:
         data[col] = None
     data['num_doors'] = pd.array([pd.NA] * len(data), dtype='Int64')
