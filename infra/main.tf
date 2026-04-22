@@ -239,3 +239,25 @@ resource "aws_lambda_permission" "eventbridge" {
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.daily.arn
 }
+
+# ─── Revista Motor (each 15 days) ────────────────────────────────────────────
+
+resource "aws_cloudwatch_event_rule" "motor" {
+  name                = "${var.project_name}-motor"
+  description         = "Trigger ${var.project_name} Lambda every 15 days for Revista Motor"
+  schedule_expression = "rate(15 days)"
+}
+
+resource "aws_cloudwatch_event_target" "motor" {
+  rule  = aws_cloudwatch_event_rule.motor.name
+  arn   = aws_lambda_function.this.arn
+  input = jsonencode({ source = "motor" })
+}
+
+resource "aws_lambda_permission" "eventbridge_motor" {
+  statement_id  = "AllowEventBridgeInvokeMotor"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.this.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.motor.arn
+}

@@ -1,7 +1,7 @@
 import logging
 from dotenv import load_dotenv
 load_dotenv(override=True)
-from extract import get_data_from_api, get_carroya_data, get_usados_renting_data, get_vendetunave_data
+from extract import get_data_from_api, get_carroya_data, get_usados_renting_data, get_vendetunave_data, get_motor_data
 from transform import transform_json_to_df, transform_carroya_to_df, transform_usados_renting_to_df, transform_vendetunave_to_df
 from datetime import datetime
 from load import upload_to_s3
@@ -67,6 +67,19 @@ def main_vendetunave():
         logging.info("Data processed successfully for vendetunave")
     except Exception as e:
         logging.error(f"An error occurred while processing vendetunave data. Error: {str(e)}")
+
+
+def main_motor():
+    try:
+        result = get_motor_data()
+        logging.info(
+            f"Motor data processed successfully — "
+            f"edicion: {result.get('edicion')}, "
+            f"nuevos: {result.get('nuevos')}, "
+            f"usados: {result.get('usados')}"
+        )
+    except Exception as e:
+        logging.error(f"An error occurred while processing motor data. Error: {str(e)}")
 
 
 if __name__ == "__main__":
