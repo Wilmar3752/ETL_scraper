@@ -71,13 +71,23 @@ def main_vendetunave():
 
 def main_motor():
     try:
+        import pandas as pd
         result = get_motor_data()
-        logging.info(
-            f"Motor data processed successfully — "
-            f"edicion: {result.get('edicion')}, "
-            f"nuevos: {result.get('nuevos')}, "
-            f"usados: {result.get('usados')}"
-        )
+        now = datetime.now().date()
+
+        for name in ('nuevos', 'usados'):
+            data = result.get(name, [])
+            if not data:
+                logging.warning(f"motor/{name}: sin datos")
+                continue
+            df = pd.DataFrame(data)
+            file_name = f'/tmp/motor_{name}.parquet'
+            df.to_parquet(file_name, index=False)
+            upload_to_s3(file_name, bucket_name='scraper-meli', object_name=f'motor/{name}_{now}.parquet')
+            upload_to_s3(file_name, bucket_name='scraper-meli', object_name=f'motor/{name}_latest.parquet')
+            logging.info(f"motor/{name}: {len(df)} filas subidas")
+
+        logging.info(f"Motor data processed successfully — edicion: {result.get('edicion')}")
     except Exception as e:
         logging.error(f"An error occurred while processing motor data. Error: {str(e)}")
 
