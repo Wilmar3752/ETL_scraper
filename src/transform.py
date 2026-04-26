@@ -394,12 +394,16 @@ def transform_elpais_to_df(json_data):
     # Preferir 'transmisión' del detail sobre 'transmision' del listing
     data['transmission'] = data.get('transmisión').combine_first(data['transmision']) \
         if 'transmisión' in data.columns else data['transmision']
+    data['fuel_type'] = data.get('combustible')
+    data['steering'] = data.get('dirección')
     data['location_city'] = data.get('ciudad de ubicación del vehículo')
     data['location_city2'] = data.get('departamento de ubicación del vehículo')
     data['last_plate_digit'] = pd.to_numeric(data.get('placa terminada en'), errors='coerce').astype('Int64')
     data['plate_parity'] = data['last_plate_digit'].apply(
         lambda x: 'Impar' if pd.notna(x) and x % 2 != 0 else ('Par' if pd.notna(x) else None)
     )
+    data['num_doors'] = pd.to_numeric(data.get('no. puertas'), errors='coerce').astype('Int64')
+    data['seating_capacity'] = pd.to_numeric(data.get('no. de asientos'), errors='coerce').astype('Int64')
     data['price'] = pd.to_numeric(data['precio_cop'], errors='coerce').astype('Int64')
     data['year'] = pd.to_numeric(data['año'], errors='coerce').astype('Int64')
     data['years'] = data['year'].copy()
@@ -407,19 +411,18 @@ def transform_elpais_to_df(json_data):
     data['id'] = pd.to_numeric(data['listing_id'], errors='coerce').astype('Int64')
     data['sku'] = data['listing_id']
 
-    for col in ['image_url', 'version', 'body_type', 'fuel_type', 'item_condition',
-                'horsepower', 'traction_control', 'steering', 'single_owner',
-                'negotiable_price', 'json_ld_extra', 'specs_extra']:
+    for col in ['image_url', 'version', 'body_type', 'item_condition', 'horsepower',
+                'traction_control', 'single_owner', 'negotiable_price',
+                'json_ld_extra', 'specs_extra']:
         data[col] = None
-    data['num_doors'] = pd.array([pd.NA] * len(data), dtype='Int64')
-    data['seating_capacity'] = pd.array([pd.NA] * len(data), dtype='Int64')
 
     data.drop(columns=['marca', 'modelo', 'año', 'km', 'transmision', 'precio_cop',
                        'precio_texto', 'telefono', 'listing_id', 'complemento modelo',
                        'color principal', 'kilometraje', 'transmisión',
                        'país de ubicación del vehículo', 'departamento de ubicación del vehículo',
-                       'ciudad de ubicación del vehículo', 'rango de precio',
-                       'tapicería', 'placa terminada en', 'descripcion', 'cilindraje'],
+                       'ciudad de ubicación del vehículo', 'rango de precio', 'tapicería',
+                       'placa terminada en', 'descripcion', 'cilindraje', 'combustible',
+                       'dirección', 'no. puertas', 'no. de asientos'],
               errors='ignore', inplace=True)
 
     return data
