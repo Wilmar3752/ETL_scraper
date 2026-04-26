@@ -1,8 +1,8 @@
 import logging
 from dotenv import load_dotenv
 load_dotenv(override=True)
-from extract import get_data_from_api, get_carroya_data, get_usados_renting_data, get_vendetunave_data, get_motor_data
-from transform import transform_json_to_df, transform_carroya_to_df, transform_usados_renting_to_df, transform_vendetunave_to_df
+from extract import get_data_from_api, get_carroya_data, get_usados_renting_data, get_vendetunave_data, get_motor_data, get_autocosmos_data
+from transform import transform_json_to_df, transform_carroya_to_df, transform_usados_renting_to_df, transform_vendetunave_to_df, transform_autocosmos_to_df
 from datetime import datetime
 from load import upload_to_s3
 import argparse
@@ -67,6 +67,21 @@ def main_vendetunave():
         logging.info("Data processed successfully for vendetunave")
     except Exception as e:
         logging.error(f"An error occurred while processing vendetunave data. Error: {str(e)}")
+
+
+def main_autocosmos():
+    try:
+        raw_data = get_autocosmos_data(num_search_pages=2)
+        transformed_data = transform_autocosmos_to_df(raw_data)
+        now = datetime.now().date()
+        transformed_data['_created'] = now
+        transformed_data['source'] = 'autocosmos'
+        file_name = '/tmp/data_autocosmos.parquet'
+        transformed_data.to_parquet(file_name, index=False)
+        upload_to_s3(file_name, bucket_name='scraper-meli', object_name=f'carros/data_{now}_autocosmos.parquet')
+        logging.info(f"Data processed successfully for autocosmos: {len(transformed_data)} records")
+    except Exception as e:
+        logging.error(f"An error occurred while processing autocosmos data. Error: {str(e)}")
 
 
 def main_motor():

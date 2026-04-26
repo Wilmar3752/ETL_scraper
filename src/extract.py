@@ -34,3 +34,7 @@ def get_vendetunave_data(num_search_pages: int = 1, items: str = "all", start_pa
 def get_motor_data():
     return _post("/motor/precios", {})
 
+
+def get_autocosmos_data(num_search_pages: int = 1, items: str = "all", start_page: int = 1):
+    return _post("/autocosmos/vehiculos", {"pages": num_search_pages, "items": items, "start_page": start_page})
+
