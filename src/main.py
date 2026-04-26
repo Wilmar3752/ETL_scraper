@@ -1,8 +1,8 @@
 import logging
 from dotenv import load_dotenv
 load_dotenv(override=True)
-from extract import get_data_from_api, get_carroya_data, get_usados_renting_data, get_vendetunave_data, get_motor_data, get_autocosmos_data, get_elpais_data
-from transform import transform_json_to_df, transform_carroya_to_df, transform_usados_renting_to_df, transform_vendetunave_to_df, transform_autocosmos_to_df, transform_elpais_to_df
+from extract import get_data_from_api, get_carroya_data, get_usados_renting_data, get_vendetunave_data, get_motor_data, get_autocosmos_data, get_elpais_data, get_autonal_data
+from transform import transform_json_to_df, transform_carroya_to_df, transform_usados_renting_to_df, transform_vendetunave_to_df, transform_autocosmos_to_df, transform_elpais_to_df, transform_autonal_to_df
 from datetime import datetime
 from load import upload_to_s3
 import argparse
@@ -97,6 +97,21 @@ def main_elpais():
         logging.info(f"Data processed successfully for elpais: {len(transformed_data)} records")
     except Exception as e:
         logging.error(f"An error occurred while processing elpais data. Error: {str(e)}")
+
+
+def main_autonal():
+    try:
+        raw_data = get_autonal_data(num_search_pages="all")
+        transformed_data = transform_autonal_to_df(raw_data)
+        now = datetime.now().date()
+        transformed_data['_created'] = now
+        transformed_data['source'] = 'autonal'
+        file_name = '/tmp/data_autonal.parquet'
+        transformed_data.to_parquet(file_name, index=False)
+        upload_to_s3(file_name, bucket_name='scraper-meli', object_name=f'carros/data_{now}_autonal.parquet')
+        logging.info(f"Data processed successfully for autonal: {len(transformed_data)} records")
+    except Exception as e:
+        logging.error(f"An error occurred while processing autonal data. Error: {str(e)}")
 
 
 def main_motor():

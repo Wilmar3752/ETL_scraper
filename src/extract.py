@@ -42,3 +42,7 @@ def get_autocosmos_data(num_search_pages: int = 1, items: str = "all", start_pag
 def get_elpais_data(num_search_pages: int = 1, items: str = "all", start_page: int = 1):
     return _post("/elpais/vehiculos", {"pages": num_search_pages, "items": items, "start_page": start_page})
 
+
+def get_autonal_data(num_search_pages: int = 1, items: str = "all", start_page: int = 1):
+    return _post("/autonal/vehiculos", {"pages": num_search_pages, "items": items, "start_page": start_page})
+

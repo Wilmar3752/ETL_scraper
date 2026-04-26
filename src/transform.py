@@ -333,6 +333,47 @@ def transform_autocosmos_to_df(json_data):
     return data
 
 
+def transform_autonal_to_df(json_data):
+    data = pd.DataFrame(json_data)
+    data = data[data['marca'].notna() | data['modelo'].notna()]
+
+    data['product'] = (data['marca'].fillna('') + ' ' + data['modelo'].fillna('')).str.strip()
+    data['vehicle_brand'] = data['marca']
+    data['vehicle_line'] = data['modelo']
+    data['linea'] = data.get('línea')
+    data['version'] = data.get('versión')
+    data['color'] = data.get('color')
+    data['engine'] = data.get('cilindraje')
+    data['price'] = pd.to_numeric(data['precio_cop'], errors='coerce').astype('Int64')
+    data['year'] = pd.to_numeric(data['año'], errors='coerce').astype('Int64')
+    data['years'] = data['year'].copy()
+    data['mileage'] = pd.to_numeric(data['km'], errors='coerce').fillna(0).astype(int)
+    data['location_city2'] = data.get('ciudad')
+    data['location_city'] = None
+    data['image_url'] = data.get('image_url')
+    data['id'] = pd.to_numeric(data['listing_id'], errors='coerce').astype('Int64')
+    data['sku'] = data['listing_id']
+
+    # placa es solo el último dígito
+    data['last_plate_digit'] = pd.to_numeric(data.get('placa'), errors='coerce').astype('Int64')
+    data['plate_parity'] = data['last_plate_digit'].apply(
+        lambda x: 'Impar' if pd.notna(x) and x % 2 != 0 else ('Par' if pd.notna(x) else None)
+    )
+
+    for col in ['description', 'body_type', 'fuel_type', 'transmission', 'item_condition',
+                'horsepower', 'traction_control', 'steering', 'single_owner',
+                'negotiable_price', 'json_ld_extra', 'specs_extra']:
+        data[col] = None
+    data['num_doors'] = pd.array([pd.NA] * len(data), dtype='Int64')
+    data['seating_capacity'] = pd.array([pd.NA] * len(data), dtype='Int64')
+
+    data.drop(columns=['marca', 'modelo', 'año', 'km', 'ciudad', 'precio_cop', 'precio_texto',
+                       'listing_id', 'línea', 'versión', 'placa', 'kilometraje', 'ubicación',
+                       'cilindraje'], errors='ignore', inplace=True)
+
+    return data
+
+
 def transform_elpais_to_df(json_data):
     data = pd.DataFrame(json_data)
     data = data[data['marca'].notna() | data['modelo'].notna()]

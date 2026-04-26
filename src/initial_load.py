@@ -3,8 +3,8 @@ import io
 import boto3
 from dotenv import load_dotenv
 load_dotenv(override=True)
-from extract import get_data_from_api, get_carroya_data, get_usados_renting_data, get_vendetunave_data, get_autocosmos_data, get_elpais_data
-from transform import transform_json_to_df, transform_carroya_to_df, transform_usados_renting_to_df, transform_vendetunave_to_df, transform_autocosmos_to_df, transform_elpais_to_df
+from extract import get_data_from_api, get_carroya_data, get_usados_renting_data, get_vendetunave_data, get_autocosmos_data, get_elpais_data, get_autonal_data
+from transform import transform_json_to_df, transform_carroya_to_df, transform_usados_renting_to_df, transform_vendetunave_to_df, transform_autocosmos_to_df, transform_elpais_to_df, transform_autonal_to_df
 from load import upload_to_s3
 from datetime import datetime
 import pandas as pd
@@ -49,7 +49,7 @@ def _paginated_load(s3, get_fn, transform_fn, source_prefix, now, start_page=1):
         page += 1
 
 
-def main(source="all", carroya_start_page=1, usados_renting_start_page=1, vendetunave_start_page=1, autocosmos_start_page=1, elpais_start_page=1):
+def main(source="all", carroya_start_page=1, usados_renting_start_page=1, vendetunave_start_page=1, autocosmos_start_page=1, elpais_start_page=1, autonal_start_page=1):
     now = datetime.now().date()
 
     if source in ("meli", "all"):
@@ -77,6 +77,10 @@ def main(source="all", carroya_start_page=1, usados_renting_start_page=1, vendet
         s3 = boto3.client('s3')
         _paginated_load(s3, get_elpais_data, transform_elpais_to_df, "elpais", now, start_page=elpais_start_page)
 
+    if source in ("autonal", "all"):
+        s3 = boto3.client('s3')
+        _paginated_load(s3, get_autonal_data, transform_autonal_to_df, "autonal", now, start_page=autonal_start_page)
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
@@ -86,10 +90,12 @@ if __name__ == "__main__":
     parser.add_argument("--vendetunave-start-page", type=int, default=1)
     parser.add_argument("--autocosmos-start-page", type=int, default=1)
     parser.add_argument("--elpais-start-page", type=int, default=1)
+    parser.add_argument("--autonal-start-page", type=int, default=1)
     args = parser.parse_args()
     main(args.source,
          carroya_start_page=args.carroya_start_page,
          usados_renting_start_page=args.usados_renting_start_page,
          vendetunave_start_page=args.vendetunave_start_page,
          autocosmos_start_page=args.autocosmos_start_page,
-         elpais_start_page=args.elpais_start_page)
+         elpais_start_page=args.elpais_start_page,
+         autonal_start_page=args.autonal_start_page)
