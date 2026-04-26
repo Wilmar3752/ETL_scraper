@@ -387,25 +387,40 @@ def transform_elpais_to_df(json_data):
     data['product'] = (data['marca'].fillna('') + ' ' + data['modelo'].fillna('')).str.strip()
     data['vehicle_brand'] = data['marca']
     data['vehicle_line'] = data['modelo']
+    data['linea'] = data.get('complemento modelo')
+    data['description'] = data.get('descripcion')
+    data['color'] = data.get('color principal')
+    data['engine'] = data.get('cilindraje')
+    # Preferir 'transmisión' del detail sobre 'transmision' del listing
+    data['transmission'] = data.get('transmisión').combine_first(data['transmision']) \
+        if 'transmisión' in data.columns else data['transmision']
+    data['location_city'] = data.get('ciudad de ubicación del vehículo')
+    data['location_city2'] = data.get('departamento de ubicación del vehículo')
+    data['last_plate_digit'] = pd.to_numeric(data.get('placa terminada en'), errors='coerce').astype('Int64')
+    data['plate_parity'] = data['last_plate_digit'].apply(
+        lambda x: 'Impar' if pd.notna(x) and x % 2 != 0 else ('Par' if pd.notna(x) else None)
+    )
     data['price'] = pd.to_numeric(data['precio_cop'], errors='coerce').astype('Int64')
     data['year'] = pd.to_numeric(data['año'], errors='coerce').astype('Int64')
     data['years'] = data['year'].copy()
     data['mileage'] = pd.to_numeric(data['km'], errors='coerce').fillna(0).astype(int)
-    data['transmission'] = data['transmision']
     data['id'] = pd.to_numeric(data['listing_id'], errors='coerce').astype('Int64')
     data['sku'] = data['listing_id']
 
-    for col in ['linea', 'description', 'color', 'body_type', 'fuel_type', 'engine',
-                'version', 'last_plate_digit', 'plate_parity', 'location_city2',
-                'location_city', 'image_url', 'item_condition', 'horsepower',
-                'traction_control', 'steering', 'single_owner', 'negotiable_price',
-                'json_ld_extra', 'specs_extra']:
+    for col in ['image_url', 'version', 'body_type', 'fuel_type', 'item_condition',
+                'horsepower', 'traction_control', 'steering', 'single_owner',
+                'negotiable_price', 'json_ld_extra', 'specs_extra']:
         data[col] = None
     data['num_doors'] = pd.array([pd.NA] * len(data), dtype='Int64')
     data['seating_capacity'] = pd.array([pd.NA] * len(data), dtype='Int64')
 
     data.drop(columns=['marca', 'modelo', 'año', 'km', 'transmision', 'precio_cop',
-                       'precio_texto', 'telefono', 'listing_id'], errors='ignore', inplace=True)
+                       'precio_texto', 'telefono', 'listing_id', 'complemento modelo',
+                       'color principal', 'kilometraje', 'transmisión',
+                       'país de ubicación del vehículo', 'departamento de ubicación del vehículo',
+                       'ciudad de ubicación del vehículo', 'rango de precio',
+                       'tapicería', 'placa terminada en', 'descripcion', 'cilindraje'],
+              errors='ignore', inplace=True)
 
     return data
 
