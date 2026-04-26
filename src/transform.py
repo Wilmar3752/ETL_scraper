@@ -308,27 +308,33 @@ def transform_autocosmos_to_df(json_data):
     data['product'] = (data['marca'].fillna('') + ' ' + data['modelo'].fillna('')).str.strip()
     data['vehicle_brand'] = data['marca']
     data['vehicle_line'] = data['modelo']
-    data['version'] = data['version']
+    data['version'] = data.get('version')
+    data['color'] = data.get('color')
+    data['fuel_type'] = data.get('combustible')
+    data['engine'] = data.get('cilindrada')
+    data['transmission'] = data.get('transmision')
+    data['horsepower'] = data.get('potencia')
+    data['traction_control'] = data.get('traccion')
     data['price'] = pd.to_numeric(data['precio_cop'], errors='coerce').astype('Int64')
     data['year'] = pd.to_numeric(data['año'], errors='coerce').astype('Int64')
     data['years'] = data['year'].copy()
     data['mileage'] = pd.to_numeric(data['km'], errors='coerce').fillna(0).astype(int)
     data['location_city2'] = data['ciudad']
     data['location_city'] = None
-    data['image_url'] = data['image_url']
+    data['image_url'] = data.get('image_url')
     data['sku'] = data['listing_id']
     data['id'] = pd.to_numeric(data['listing_id'], errors='coerce').astype('Int64')
 
-    for col in ['linea', 'description', 'color', 'body_type', 'fuel_type', 'engine',
-                'transmission', 'last_plate_digit', 'plate_parity', 'item_condition',
-                'horsepower', 'traction_control', 'steering', 'single_owner',
-                'negotiable_price', 'json_ld_extra', 'specs_extra']:
+    for col in ['linea', 'description', 'body_type', 'last_plate_digit', 'plate_parity',
+                'item_condition', 'steering', 'single_owner', 'negotiable_price',
+                'json_ld_extra', 'specs_extra']:
         data[col] = None
     data['num_doors'] = pd.array([pd.NA] * len(data), dtype='Int64')
     data['seating_capacity'] = pd.array([pd.NA] * len(data), dtype='Int64')
 
-    data.drop(columns=['marca', 'modelo', 'año', 'km', 'ciudad', 'precio_cop',
-                       'precio_texto', 'listing_id'], errors='ignore', inplace=True)
+    data.drop(columns=['marca', 'modelo', 'año', 'km', 'ciudad', 'precio_cop', 'precio_texto',
+                       'listing_id', 'combustible', 'cilindrada', 'potencia', 'alimentacion',
+                       'cilindros', 'traccion', 'transmision'], errors='ignore', inplace=True)
 
     return data
 
