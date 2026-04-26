@@ -12,6 +12,8 @@ def _post(endpoint: str, payload: dict) -> list:
     response = requests.post(url, data=json.dumps(payload), headers=headers, timeout=1800)
     print(f"Response status: {response.status_code}")
     print(f"Response body (first 500 chars): {response.text[:500]}")
+    if response.status_code != 200:
+        return []
     return response.json()
 
 
