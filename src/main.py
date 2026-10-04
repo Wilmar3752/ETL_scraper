@@ -4,7 +4,8 @@ load_dotenv(override=True)
 from extract import get_data_from_api, get_carroya_data, get_usados_renting_data, get_vendetunave_data, get_motor_data, get_autocosmos_data, get_elpais_data, get_autonal_data, get_facebook_data
 from transform import transform_json_to_df, transform_carroya_to_df, transform_usados_renting_to_df, transform_vendetunave_to_df, transform_autocosmos_to_df, transform_elpais_to_df, transform_autonal_to_df, transform_facebook_to_df
 from datetime import datetime
-from load import upload_to_s3, get_stored_skus
+from load import upload_to_s3, get_stored_skus, read_s3_parquet
+import pandas as pd
 import argparse
 
 # Set up logging
@@ -120,7 +121,9 @@ FACEBOOK_KNOWN_DAYS = 14
 
 def main_facebook():
     try:
-        known_ids = get_stored_skus('facebook', days=FACEBOOK_KNOWN_DAYS)
+        now = datetime.now().date()
+        object_name = f'carros/data_{now}_facebook.parquet'
+        known_ids = get_stored_skus('facebook', days=FACEBOOK_KNOWN_DAYS, today=now)
         logging.info(f"facebook: {len(known_ids)} ids already stored in the last {FACEBOOK_KNOWN_DAYS} days")
         raw_data = get_facebook_data(known_ids=known_ids)
         new_data = [row for row in raw_data if row.get('is_new')]   # known ones are already in S3
@@ -128,13 +131,18 @@ def main_facebook():
             logging.info(f"facebook: no new listings ({len(raw_data)} returned, all known)")
             return
         transformed_data = transform_facebook_to_df(new_data)
-        now = datetime.now().date()
         transformed_data['_created'] = now
         transformed_data['source'] = 'facebook'
+        # A second run on the same day only brings what the first one did not store: add to its file
+        earlier = read_s3_parquet(object_name)
+        if earlier is not None:
+            transformed_data = pd.concat([earlier, transformed_data], ignore_index=True) \
+                .drop_duplicates(subset='sku', keep='last')
         file_name = '/tmp/data_facebook.parquet'
         transformed_data.to_parquet(file_name, index=False)
-        upload_to_s3(file_name, bucket_name='scraper-meli', object_name=f'carros/data_{now}_facebook.parquet')
-        logging.info(f"Data processed successfully for facebook: {len(transformed_data)} new records")
+        upload_to_s3(file_name, bucket_name='scraper-meli', object_name=object_name)
+        logging.info(f"Data processed successfully for facebook: {len(new_data)} new records, "
+                     f"{len(transformed_data)} in {object_name}")
     except Exception as e:
         logging.error(f"An error occurred while processing facebook data. Error: {str(e)}")
 
