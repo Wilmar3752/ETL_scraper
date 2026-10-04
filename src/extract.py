@@ -48,3 +48,7 @@ def get_elpais_data(num_search_pages: int = 1, items: str = "all", start_page: i
 def get_autonal_data(num_search_pages: int = 1, items: str = "all", start_page: int = 1):
     return _post("/autonal/vehiculos", {"pages": num_search_pages, "items": items, "start_page": start_page})
 
+
+def get_facebook_data(known_ids: list | None = None, cities: list | None = None, items: str = "all"):
+    """First page of each city's Marketplace feed; ``known_ids`` skip the detail page and come back with is_new=False."""
+    return _post("/facebook/vehiculos", {"cities": cities, "known_ids": known_ids or [], "items": items})

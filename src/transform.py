@@ -428,6 +428,156 @@ def transform_elpais_to_df(json_data):
     return data
 
 
+# Facebook: most sellers outside Bogotá skip the vehicle form, so brand/line often come from the title.
+_FACEBOOK_BRANDS = {
+    'mercedes benz': 'Mercedes-Benz', 'mercedes-benz': 'Mercedes-Benz', 'mercedes': 'Mercedes-Benz',
+    'land rover': 'Land Rover', 'range rover': 'Land Rover', 'great wall': 'Great Wall',
+    'alfa romeo': 'Alfa Romeo', 'volkswagen': 'Volkswagen', 'wolkswagen': 'Volkswagen', 'volswagen': 'Volkswagen',
+    'vw': 'Volkswagen', 'chevrolet': 'Chevrolet', 'chevy': 'Chevrolet', 'renault': 'Renault', 'renaul': 'Renault',
+    'mazda': 'Mazda', 'kia': 'Kia', 'toyota': 'Toyota', 'nissan': 'Nissan', 'nisan': 'Nissan',
+    'hyundai': 'Hyundai', 'ford': 'Ford', 'suzuki': 'Suzuki', 'susuki': 'Suzuki', 'mitsubishi': 'Mitsubishi',
+    'honda': 'Honda', 'bmw': 'BMW', 'audi': 'Audi', 'peugeot': 'Peugeot', 'jeep': 'Jeep', 'dodge': 'Dodge',
+    'ram': 'RAM', 'fiat': 'Fiat', 'citroen': 'Citroën', 'citroën': 'Citroën', 'subaru': 'Subaru',
+    'volvo': 'Volvo', 'skoda': 'Skoda', 'seat': 'SEAT', 'byd': 'BYD', 'chery': 'Chery', 'jac': 'JAC',
+    'dfsk': 'DFSK', 'mini': 'MINI', 'porsche': 'Porsche', 'lexus': 'Lexus', 'ssangyong': 'SsangYong',
+    'daewoo': 'Daewoo', 'daihatsu': 'Daihatsu', 'isuzu': 'Isuzu', 'foton': 'Foton', 'changan': 'Changan',
+    'geely': 'Geely', 'mg': 'MG', 'haval': 'Haval', 'jetour': 'Jetour', 'tesla': 'Tesla', 'opel': 'Opel',
+}
+# Titles that name only the model ('Spark gt 2011', 'Sandero intens automático')
+_FACEBOOK_MODELS = {
+    'Chevrolet': ['spark', 'aveo', 'sail', 'onix', 'tracker', 'captiva', 'cruze', 'optra', 'beat', 'joy',
+                  'd-max', 'dmax', 'luv', 'n300', 'corsa', 'sonic', 'equinox', 'trailblazer', 'colorado', 'vitara'],
+    'Renault': ['sandero', 'logan', 'duster', 'stepway', 'clio', 'kwid', 'twingo', 'symbol', 'koleos',
+                'captur', 'oroch', 'megane', 'fluence', 'kangoo', 'arkana'],
+    'Mazda': ['cx-5', 'cx5', 'cx-30', 'cx30', 'cx-3', 'cx3', 'cx-50', 'cx-9', 'bt-50', 'bt50', 'allegro'],
+    'Kia': ['picanto', 'rio', 'sportage', 'cerato', 'soluto', 'sorento', 'stonic', 'seltos', 'niro', 'carnival'],
+    'Toyota': ['hilux', 'fortuner', 'corolla', 'prado', 'yaris', 'rav4', 'rav 4', 'land cruiser', 'tundra', 'fj'],
+    'Nissan': ['march', 'versa', 'sentra', 'frontier', 'qashqai', 'kicks', 'tiida', 'x-trail', 'xtrail', 'navara'],
+    'Hyundai': ['accent', 'tucson', 'i10', 'i25', 'i35', 'santa fe', 'creta', 'atos', 'getz', 'elantra', 'venue'],
+    'Ford': ['fiesta', 'ecosport', 'escape', 'explorer', 'ranger', 'focus', 'f-150', 'f150', 'bronco', 'edge'],
+    'Volkswagen': ['gol', 'polo', 'jetta', 'tiguan', 't-cross', 'voyage', 'virtus', 'amarok', 'nivus', 'golf'],
+    'Suzuki': ['swift', 'grand vitara', 'alto', 'jimny', 'celerio', 'ertiga', 's-presso', 'baleno'],
+    'Fiat': ['cronos', 'mobi', 'palio', 'siena', 'strada', 'pulse', 'fastback'],
+    'Mitsubishi': ['montero', 'lancer', 'outlander', 'l200', 'eclipse cross', 'asx'],
+    'Honda': ['civic', 'cr-v', 'crv', 'hr-v', 'hrv', 'city', 'fit', 'pilot', 'accord'],
+}
+_FACEBOOK_MODEL_BRAND = {m: b for b, models in _FACEBOOK_MODELS.items() for m in models}
+
+
+def _alternation(words):
+    """Regex for whole-word matches of ``words``, longest first ('mercedes benz' before 'mercedes')."""
+    return re.compile(r'(?<![\w-])(' + '|'.join(re.escape(w) for w in sorted(words, key=len, reverse=True))
+                      + r')(?![\w-])', re.IGNORECASE)
+
+
+_FACEBOOK_BRAND_RE = _alternation(_FACEBOOK_BRANDS)
+_FACEBOOK_MODEL_RE = _alternation(_FACEBOOK_MODEL_BRAND)
+_YEAR_RE = re.compile(r'(19|20)\d{2}')
+_FACEBOOK_FUEL = {'PETROL': 'Gasolina', 'GASOLINE': 'Gasolina', 'DIESEL': 'Diésel', 'HYBRID': 'Híbrido',
+                  'PLUGIN_HYBRID': 'Híbrido enchufable', 'ELECTRIC': 'Eléctrico', 'FLEX': 'Flex', 'OTHER': None}
+_FACEBOOK_TRANSMISSION = {'AUTOMATIC': 'Automática', 'MANUAL': 'Mecánica'}
+
+
+def _facebook_clean(text):
+    """'2020 Renault+ Logan+' -> '2020 Renault Logan' (some apps post the title URL-encoded)."""
+    if not isinstance(text, str):
+        return None
+    return re.sub(r'\s+', ' ', text.replace('+', ' ')).strip() or None
+
+
+_KM_RE = re.compile(r'(?<![\d.,])(\d{1,3}(?:[.,]\d{3})+|\d+(?:[.,]\d+)?)\s*(mil)?\s*'
+                    r'(?:km|kms|kil[oó]metros|kilometraje)\b', re.IGNORECASE)
+
+
+def _facebook_km(text):
+    """Mileage written in the description: '144.460 kilómetros' -> 144460, '39mil km' -> 39000.
+    Small bare numbers ('53km originales', meaning 53 thousand) are ambiguous and skipped."""
+    if not isinstance(text, str):
+        return None
+    for number, thousands in _KM_RE.findall(text):
+        if thousands:
+            value = float(number.replace(',', '.')) * 1000
+        elif re.fullmatch(r'\d{1,3}(?:[.,]\d{3})+', number):
+            value = int(re.sub(r'[.,]', '', number))
+        else:
+            value = float(number.replace(',', '.'))
+        if 1000 <= value <= 1_500_000:
+            return int(value)
+    return None
+
+
+def _facebook_brand_line(text):
+    """Known brand in ``text`` and the word after it, else a known model and its brand:
+    'Vendo Renault clio 2011' -> ('Renault', 'clio'); 'Spark gt 2011' -> ('Chevrolet', 'Spark')."""
+    text = text or ''
+    match = _FACEBOOK_BRAND_RE.search(text)
+    if match:
+        rest = [w for w in text[match.end():].split() if not _YEAR_RE.fullmatch(w)]
+        return _FACEBOOK_BRANDS[match.group(1).lower()], (rest[0] if rest else None)
+    match = _FACEBOOK_MODEL_RE.search(text)
+    if match:
+        return _FACEBOOK_MODEL_BRAND[match.group(1).lower()], match.group(1)
+    return None, None
+
+
+def _facebook_vehicle(row):
+    """(brand, line): the seller's form values when they make sense, else what the title says."""
+    title_brand, title_line = _facebook_brand_line(row['product'])
+    form_brand = _facebook_clean(row['brand'])
+    form_line = _facebook_clean(row['line'])
+    brand = _facebook_brand_line(form_brand)[0] if form_brand else None   # 'MAZDA 2 GRAND TOURING' -> 'Mazda'
+    if form_line and _YEAR_RE.fullmatch(form_line):                     # sellers who type the year as model
+        form_line = None
+    return brand or title_brand or form_brand, form_line or title_line
+
+
+def transform_facebook_to_df(json_data):
+    data = pd.DataFrame(json_data)
+    data = data[data['title'].notna()]
+
+    for col in ['brand', 'line', 'version', 'fuel_type', 'transmission', 'description', 'condition', 'mileage']:
+        if col not in data.columns:
+            data[col] = None
+
+    data['product'] = data['title'].map(_facebook_clean)
+    data['link'] = data['url']
+    vehicle = data.apply(_facebook_vehicle, axis=1)
+    data['vehicle_brand'] = vehicle.str[0]
+    data['vehicle_line'] = vehicle.str[1]
+    data['version'] = data['version'].map(_facebook_clean)
+    data['fuel_type'] = data['fuel_type'].map(lambda x: _FACEBOOK_FUEL.get(x, x) if isinstance(x, str) else None)
+    data['transmission'] = data['transmission'].map(
+        lambda x: _FACEBOOK_TRANSMISSION.get(x, x) if isinstance(x, str) else None)
+    data['item_condition'] = data['condition']
+    data['price'] = pd.to_numeric(data['price'], errors='coerce').astype('Int64')
+    data['year'] = pd.to_numeric(data['year'], errors='coerce').astype('Int64')
+    data['years'] = data['year'].copy()
+    data['mileage'] = pd.to_numeric(data['mileage'], errors='coerce') \
+        .combine_first(data['description'].map(_facebook_km)).fillna(0).astype(int)
+
+    # 'Villavicencio, Meta' / 'Bogotá, D.C., Colombia' -> city, department
+    parts = data['city'].fillna('').str.replace(r',\s*Colombia$', '', regex=True).str.split(',', n=1)
+    data['location_city'] = parts.str[0].str.strip().replace('', None)
+    data['location_city2'] = parts.str[1].str.strip()
+
+    data['sku'] = data['ad_id'].astype(str)
+    data['id'] = pd.to_numeric(data['ad_id'], errors='coerce').astype('Int64')
+    data['specs_extra'] = data.apply(
+        lambda r: json.dumps({'published_at': r.get('published_at'), 'search_city': r.get('search_city')}), axis=1)
+
+    for col in ['linea', 'color', 'body_type', 'engine', 'horsepower', 'traction_control', 'steering',
+                'last_plate_digit', 'plate_parity', 'single_owner', 'negotiable_price', 'json_ld_extra']:
+        data[col] = None
+    data['num_doors'] = pd.array([pd.NA] * len(data), dtype='Int64')
+    data['seating_capacity'] = pd.array([pd.NA] * len(data), dtype='Int64')
+
+    data.drop(columns=['source', 'url', 'ad_id', 'title', 'brand', 'line', 'condition', 'city',
+                       'published_at', 'search_city', 'is_new', '_created'],
+              errors='ignore', inplace=True)
+
+    return data
+
+
 def extract_pub_number_from_link(url):
     match = re.search(r'MCO-(\d+)', url)
     if match:

@@ -10,6 +10,7 @@ ETL pipeline that scrapes vehicle listings from multiple sources in Colombia, tr
 | Carroya | `POST /carroya/vehiculos` | 10 | 10:40 PM |
 | Usados Renting | `POST /usados-renting/vehiculos` | 5 | 10:55 PM |
 | VendeTuNave | `POST /vendetunave/vehiculos` | all | 11:10 PM |
+| Facebook Marketplace | `POST /facebook/vehiculos` | 1st page × 15 cities, new ids only | 11:40 PM |
 
 ## Architecture
 
@@ -44,6 +45,15 @@ All sources are homologated to the same 35-column schema:
 
 `product`, `price`, `link`, `year`, `linea`, `description`, `vehicle_brand`, `vehicle_line`, `color`, `body_type`, `fuel_type`, `engine`, `transmission`, `version`, `id`, `years`, `mileage`, `last_plate_digit`, `plate_parity`, `location_city2`, `location_city`, `sku`, `image_url`, `item_condition`, `horsepower`, `traction_control`, `steering`, `single_owner`, `negotiable_price`, `num_doors`, `seating_capacity`, `json_ld_extra`, `specs_extra`, `_created`, `source`
 
+## Facebook Marketplace
+
+Facebook has no pages: each run gets the ~24 newest listings of 15 cities (~260 unique, covering the last
+~2-6 days), so consecutive runs overlap. `main_facebook()` reads the `sku`s of the last 14 daily
+`carros/data_*_facebook.parquet` files (needs `s3:GetObject` on them, see `infra/main.tf`), sends them as
+`known_ids`, and stores only the listings flagged `is_new`. Most sellers outside Bogotá skip the vehicle
+form, so `transform_facebook_to_df()` infers brand/line from the title and mileage from the description.
+`specs_extra` keeps `published_at` and `search_city`. There is no initial load: the feed only shows recent listings.
+
 ## Athena
 
 Database: `scraper_meli`  
@@ -64,6 +74,7 @@ cd src && python main.py carros           # meli
 cd src && python -c "from main import main_carroya; main_carroya()"
 cd src && python -c "from main import main_usados_renting; main_usados_renting()"
 cd src && python -c "from main import main_vendetunave; main_vendetunave()"
+cd src && python -c "from main import main_facebook; main_facebook()"
 
 # Run initial load (paginated, with S3 verification)
 python src/initial_load.py --source carroya --carroya-start-page 1

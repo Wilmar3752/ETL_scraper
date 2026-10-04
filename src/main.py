@@ -1,10 +1,10 @@
 import logging
 from dotenv import load_dotenv
 load_dotenv(override=True)
-from extract import get_data_from_api, get_carroya_data, get_usados_renting_data, get_vendetunave_data, get_motor_data, get_autocosmos_data, get_elpais_data, get_autonal_data
-from transform import transform_json_to_df, transform_carroya_to_df, transform_usados_renting_to_df, transform_vendetunave_to_df, transform_autocosmos_to_df, transform_elpais_to_df, transform_autonal_to_df
+from extract import get_data_from_api, get_carroya_data, get_usados_renting_data, get_vendetunave_data, get_motor_data, get_autocosmos_data, get_elpais_data, get_autonal_data, get_facebook_data
+from transform import transform_json_to_df, transform_carroya_to_df, transform_usados_renting_to_df, transform_vendetunave_to_df, transform_autocosmos_to_df, transform_elpais_to_df, transform_autonal_to_df, transform_facebook_to_df
 from datetime import datetime
-from load import upload_to_s3
+from load import upload_to_s3, get_stored_skus
 import argparse
 
 # Set up logging
@@ -112,6 +112,31 @@ def main_autonal():
         logging.info(f"Data processed successfully for autonal: {len(transformed_data)} records")
     except Exception as e:
         logging.error(f"An error occurred while processing autonal data. Error: {str(e)}")
+
+
+# Each run reaches back ~2-6 days and consecutive runs overlap; ids stored in this window skip the detail page.
+FACEBOOK_KNOWN_DAYS = 14
+
+
+def main_facebook():
+    try:
+        known_ids = get_stored_skus('facebook', days=FACEBOOK_KNOWN_DAYS)
+        logging.info(f"facebook: {len(known_ids)} ids already stored in the last {FACEBOOK_KNOWN_DAYS} days")
+        raw_data = get_facebook_data(known_ids=known_ids)
+        new_data = [row for row in raw_data if row.get('is_new')]   # known ones are already in S3
+        if not new_data:
+            logging.info(f"facebook: no new listings ({len(raw_data)} returned, all known)")
+            return
+        transformed_data = transform_facebook_to_df(new_data)
+        now = datetime.now().date()
+        transformed_data['_created'] = now
+        transformed_data['source'] = 'facebook'
+        file_name = '/tmp/data_facebook.parquet'
+        transformed_data.to_parquet(file_name, index=False)
+        upload_to_s3(file_name, bucket_name='scraper-meli', object_name=f'carros/data_{now}_facebook.parquet')
+        logging.info(f"Data processed successfully for facebook: {len(transformed_data)} new records")
+    except Exception as e:
+        logging.error(f"An error occurred while processing facebook data. Error: {str(e)}")
 
 
 def main_motor():

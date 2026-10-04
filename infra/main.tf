@@ -104,6 +104,23 @@ resource "aws_iam_role_policy" "s3_put" {
   })
 }
 
+# Facebook ETL reads the ids it already stored, to skip their detail pages (see get_stored_skus)
+resource "aws_iam_role_policy" "s3_get_facebook" {
+  name = "${var.project_name}-s3-get-facebook"
+  role = aws_iam_role.lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "s3:GetObject"
+        Resource = "arn:aws:s3:::scraper-meli/carros/data_*_facebook.parquet"
+      }
+    ]
+  })
+}
+
 # Lambda Function
 resource "aws_lambda_function" "this" {
   function_name = var.project_name

@@ -4,7 +4,7 @@ import logging
 
 sys.path.insert(0, os.path.join(os.environ.get("LAMBDA_TASK_ROOT", ""), "src"))
 
-from main import main, main_carroya, main_usados_renting, main_vendetunave, main_motor, main_autocosmos, main_elpais, main_autonal
+from main import main, main_carroya, main_usados_renting, main_vendetunave, main_motor, main_autocosmos, main_elpais, main_autonal, main_facebook
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -76,6 +76,15 @@ def handler(event, context):
         except Exception as e:
             results["autocosmos"] = f"error: {str(e)}"
             logger.error(f"ETL failed for autocosmos: {str(e)}")
+
+    if source in ("facebook", "all"):
+        try:
+            main_facebook()
+            results["facebook"] = "success"
+            logger.info("ETL completed for facebook")
+        except Exception as e:
+            results["facebook"] = f"error: {str(e)}"
+            logger.error(f"ETL failed for facebook: {str(e)}")
 
     if source == "motor":
         try:
